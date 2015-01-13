@@ -1,4 +1,11 @@
-# -*- coding: gb2312 -*-
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+##############################
+####    author: wukai     ####
+####    License: MIT      ####
+####       v1.0           ####
+##############################
 
 import copy
 
@@ -553,7 +560,7 @@ class QuerySet(object):
 
         return self._db.select(sql, params)[0][0]
 
-    @opt_checker(["distinct", "for_update", "dict_cursor"])
+    @opt_checker(["distinct", "for_update", "dict_cursor", "dry"])
     def select(self, *f_list, **opt):
         sql = ["SELECT"]
         params = []
@@ -568,7 +575,7 @@ class QuerySet(object):
             sql.append("FOR UPDATE")
 
         sql = " ".join(sql)
-        if self._db is None:
+        if self._db is None or opt.get("dry") == True:
             return sql, params
 
         return self._db.select(sql, params, dict_cursor=opt.get("dict_cursor", True))
@@ -596,7 +603,7 @@ class QuerySet(object):
         return None if len(result) < 1 else result[0]
 
     def select_for_union(self, *f_list, **opt):
-        return UnionPart(*self.select(*f_list, **opt))
+        return UnionPart(db=self._db, *self.select(dry=True, *f_list, **opt))
 
     def insert(self, fv_dict, **opt):
         sql, params = self.insert_many(
@@ -686,7 +693,8 @@ class QuerySet(object):
 
 
 class UnionPart(object):
-    def __init__(self, sql, params):
+    def __init__(self, sql, params, db=None):
+        self.db = db
         self.sql = sql
         self.params = params
 
@@ -705,6 +713,7 @@ class UnionPart(object):
 
 class UnionQuerySet(object):
     def __init__(self, up):
+        self._db = up.db
         self._union_part_list = [(None, up)]
 
         self._group_by = None
@@ -715,12 +724,18 @@ class UnionQuerySet(object):
         if not isinstance(up, UnionPart):
             raise TypeError("Can't do operation with %s" % str(type(up)))
 
+        if self._db is None:
+            self._db = up.db
+
         self._union_part_list.append(("UNION DISTINCT", up))
         return self
 
     def __add__(self, up):
         if not isinstance(up, UnionPart):
             raise TypeError("Can't do operation with %s" % str(type(up)))
+
+        if self._db is None:
+            self._db = up.db
 
         self._union_part_list.append(("UNION ALL", up))
         return self
@@ -758,10 +773,15 @@ class UnionQuerySet(object):
             sql.append(self._limit)
 
         sql = " ".join(sql)
-        if db is None:
-            return sql, params
 
-        return db.query(sql, params, dict_cursor=True)
+        if db is not None:
+            return db.select(sql, params, dict_cursor=True)
+
+        if self._db is not None:
+            return self._db.select(sql, params, dict_cursor=True)
+
+        return sql, params
+
 
 
 
