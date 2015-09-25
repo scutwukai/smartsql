@@ -143,7 +143,7 @@ class Field(object):
         if isinstance(f, Expr):
             return Condition("%s = %s" % (self.sql, f.sql), f.params)
 
-        if isinstance(f, list) or isinstance(f, tuple):
+        if isinstance(f, list) or isinstance(f, tuple) or isinstance(f, set):
             if len(f) < 1:
                 return Condition("FALSE")
 
@@ -162,7 +162,7 @@ class Field(object):
         if isinstance(f, Expr):
             return Condition("%s <> %s" % (self.sql, f.sql), f.params)
 
-        if isinstance(f, list) or isinstance(f, tuple):
+        if isinstance(f, list) or isinstance(f, tuple) or isinstance(f, set):
             if len(f) < 1:
                 return Condition("TRUE")
 
@@ -614,9 +614,9 @@ class QuerySet(object):
 
         return self._db.insert(sql, params)
 
-    @opt_checker(["ignore", "on_duplicate_key_update", "__dry_run__"])
+    @opt_checker(["ignore", "replace", "on_duplicate_key_update", "__dry_run__"])
     def insert_many(self, f_list, v_list_set, **opt):
-        sql = ["INSERT"]
+        sql = ["REPLACE"] if opt.get("replace") else ["INSERT"]
         params = []
 
         if opt.get("ignore"):
