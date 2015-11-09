@@ -17,16 +17,20 @@ class Error(Exception):
     pass
 
 
+def quote(name):
+    return "`%s`" % name.replace("`", "``")
+
+
 ##################################################################
 
 class MetaTable(type):
     def __getattr__(cls, key):
         temp = key.split("__")
-        name = temp[0]
+        name = quote(temp[0])
         alias = None
 
         if len(temp) > 1:
-            alias = temp[1]
+            alias = quote(temp[1])
 
         return cls(name, alias)
 
@@ -116,12 +120,12 @@ class TableSet(object):
 class MetaField(type):
     def __getattr__(cls, key):
         temp = key.split("__")
-        name = temp[0]
+        name = quote(temp[0])
         prefix = None
 
         if len(temp) > 1:
-            prefix = temp[0]
-            name = temp[1]
+            prefix = quote(temp[0])
+            name = quote(temp[1])
 
         return cls(name, prefix)
 
@@ -218,7 +222,7 @@ class Field(object):
 
     @property
     def sql(self):
-        return ".".join((self._prefix, self._name)) if self._prefix else self._name
+        return ".".join([self._prefix, self._name]) if self._prefix else self._name
 
 
 class Condition(object):
@@ -437,7 +441,7 @@ def _gen_fv_dict(fv_dict, params):
 
 class QuerySetDeepcopyHelper(object):
     """
-        used ot avoid deep copy the db
+        used to avoid deep copy the db
     """
     def __init__(self, db):
         self._db = db
